@@ -1,0 +1,45 @@
+# Byte-compiled files
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# Django stuff:
+*.log
+*.pot
+*.pyc
+__pycache__
+db.sqlite3
+/static
+/media
+.env
+
+# Docker
+**/docker-compose.override.yml
+docker-compose.override.yml
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# MacOS
+.DS_Store
+
+# Test and Coverage files
+.coverage
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.tox/
+.nox/
+.coverage/
+*.hypothesis/
+
+# Virtualenv
+venv/
+ENV/
+env/
+.env/
