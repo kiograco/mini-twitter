@@ -7,13 +7,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
 from .models import Post, Like, Follow
 from .serializers import PostSerializer, LikeSerializer, FollowSerializer, UserSerializer
+from rest_framework.throttling import AnonRateThrottle
+from .throttles import BurstRateThrottle
 
 
 class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all().order_by('-created_at')
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
-
+    throttle_classes = [BurstRateThrottle, AnonRateThrottle]
     def perform_create(self, serializer):
         post = serializer.save(author=self.request.user)
         # Invalida o cache do feed após criação de post

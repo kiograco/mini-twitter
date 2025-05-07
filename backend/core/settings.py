@@ -43,8 +43,8 @@ MIDDLEWARE = [
 
 # Configuração do CORS
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173/",
-    "http://localhost:5173/*",
+    "http://localhost:5173",
+    "http://localhost:5173*",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -127,12 +127,21 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '100/hour',    # usuários autenticados: 100 req/h
+        'anon': '20/hour',     # usuários anônimos: 20 req/h
+        'burst': '5/minute',
+    }
 }
 
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://redis:6379/1",  # usar o serviço Redis
+        "LOCATION": "redis://redis:6379/1",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }

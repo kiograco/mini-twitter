@@ -2,6 +2,7 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 from django.contrib.auth.models import User
 from .models import Post, Like, Follow
+from rest_framework_simplejwt.tokens import RefreshToken
 
 class SocialAPITestCase(APITestCase):
 
@@ -89,3 +90,20 @@ def test_create_post_without_authentication(self):
     self.client.credentials()  # Remove o token de autenticação
     response = self.client.post('/api/posts/', {'content': 'Post sem autenticação'})
     self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+class ThrottleTestCase(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='throttle_user', password='testpass')
+        refresh = RefreshToken.for_user(self.user)
+        self.token = str(refresh.access_token)
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.token)
+
+    def test_throttle_limit_exceeded(self):
+        url = '/api/posts/'  # ajuste conforme sua URL real
+
+        # Realiza 6 requisições (1 a mais que o limite de 5/min)
+        for i in range(6):
+            response = self.client.get(url)
+
+        # A última requisição deve retornar status 429
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
