@@ -3,12 +3,13 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth.models import User
 from django.core.cache import cache
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated,IsAuthenticatedOrReadOnly
 from rest_framework.exceptions import ValidationError
 from .models import Post, Like, Follow
 from .serializers import PostSerializer, LikeSerializer, FollowSerializer, UserSerializer
 from rest_framework.throttling import AnonRateThrottle
 from .throttles import BurstRateThrottle
+from .tasks import send_follow_notification_email
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -16,9 +17,9 @@ class PostViewSet(viewsets.ModelViewSet):
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
     throttle_classes = [BurstRateThrottle, AnonRateThrottle]
+
     def perform_create(self, serializer):
         post = serializer.save(author=self.request.user)
-        # Invalida o cache do feed após criação de post
         cache_key = f"user_feed_{self.request.user.id}"
         cache.delete(cache_key)
         return post
@@ -35,7 +36,6 @@ class PostViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(page, many=True)
         response = self.get_paginated_response(serializer.data)
 
-        # Cache do feed por 60 segundos
         cache.set(cache_key, response.data, timeout=60)
         return response
 
@@ -43,15 +43,14 @@ class PostViewSet(viewsets.ModelViewSet):
     def like(self, request, pk=None):
         post = self.get_object()
         like, created = Like.objects.get_or_create(user=request.user, post=post)
+        
         if not created:
             return Response({'detail': 'Already liked'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Opcional: invalidar cache se quiser refletir likes imediatamente
         cache_key = f"user_feed_{request.user.id}"
         cache.delete(cache_key)
 
         return Response({'detail': 'Post liked'})
-
 
 class FollowViewSet(viewsets.ModelViewSet):
     queryset = Follow.objects.all()
@@ -71,6 +70,8 @@ class FollowViewSet(viewsets.ModelViewSet):
         # Invalida contador de seguidores do usuário seguido
         followed_user_id = follow.following.id
         cache.delete(f"user_{followed_user_id}_followers_count")
+        follow = serializer.save(follower=self.request.user)
+        send_follow_notification_email.delay(self.request.user.id, follow.following.id)
 
         return follow
 

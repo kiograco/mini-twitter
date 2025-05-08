@@ -6,3 +6,5 @@ django-environ
 djangorestframework-simplejwt
 django-redis
 django-cors-headers
+celery
+redis

@@ -1,3 +1,5 @@
+version: '3.9'
+
 services:
   db:
     image: postgres:15
@@ -9,10 +11,14 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - default
+
   redis:
     image: redis:7
     ports:
       - "6379:6379"
+    networks:
+      - default
+
   backend:
     build: ./backend
     command: python manage.py runserver 0.0.0.0:8000
@@ -25,8 +31,26 @@ services:
       - redis
     env_file:
       - ./backend/.env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
     networks:
       - default
+
+  celery:
+    build: ./backend
+    command: celery -A backend worker --loglevel=info
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - backend
+      - redis
+    env_file:
+      - ./backend/.env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    networks:
+      - default
+
   frontend:
     build:
       context: ./frontend
@@ -41,5 +65,11 @@ services:
     command: sh -c "npm install && npm run dev"
     depends_on:
       - backend
+    networks:
+      - default
+
 volumes:
   postgres_data:
+
+networks:
+  default:
